@@ -1,0 +1,5 @@
+-std=c++23
+-I
+deps/glfw
+-I
+deps/glm
