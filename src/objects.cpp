@@ -16,7 +16,7 @@
 #define SPEED 2
 #define SENSITIVITY .7
 #define MAX_DST 100
-#define SPAWNER_NUM 4
+#define SPAWNER_NUM 1
 #define FARTHEST_SPAWNER 5
 #define G 6.67
 #define GRAV 0.5f
@@ -136,11 +136,10 @@ void CreateSpawners() {
         spawners.particles[i] = sys;
     }
 }
-static int rep = 0;
+
 void UpdateSpawners(const float dt) {
     for (unsigned int i = 0; i < SPAWNER_NUM; ++i) {
         spawners.pos[i] += spawners.vel[i] * dt;
-        ++rep;
         float grav_cnst = G*spawners.mass[i];
         for (unsigned int j = 0; j < SPAWNER_NUM; ++j) {
             if (i == j) 
@@ -167,9 +166,16 @@ void UpdateSpawners(const float dt) {
         spawners.vel[i].y = 0;
         spawners.particles[i]->Update(dt, spawners.pos, spawners.mass,
                                       spawners.vel,
-                                      SPAWNER_NUM, i);
+                                      SPAWNER_NUM, i, 0.1);
     }
     Program::FinishComputes();
+
+    if (IsKeyDown(GLFW_KEY_F1)) {
+        spawners.particles[0]->PrintParticles();
+        // spawners.particles[0]->PrintParticles();
+        // spawners.particles[0]->PrintParticles();
+        exit(1);
+    }
 }
 
 void DrawSpawners() {

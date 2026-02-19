@@ -1,8 +1,8 @@
 #version 450 core
 
 struct Particle {
-    vec3 pos;
-    vec3 vel;
+    vec4 pos;
+    vec4 vel;
     float mass;
     float life;
 };
@@ -20,7 +20,7 @@ out vec2 uv;
 
 void main() {
     Particle p = particles[gl_InstanceID];
-    gl_Position = u_proj * ((u_transform * vec4(p.pos, 1)) +
+    gl_Position = u_proj * ((u_transform * vec4(p.pos.xyz, 1)) +
         vec4(aPos, 1));
     uv = aPos.xy;
 }

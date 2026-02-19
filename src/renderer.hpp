@@ -31,7 +31,8 @@ public:
     static void Dispatch(const ivec3);
     static void FinishComputes(const GLuint =
                                GL_SHADER_IMAGE_ACCESS_BARRIER_BIT|
-                               GL_SHADER_STORAGE_BARRIER_BIT);
+                               GL_SHADER_STORAGE_BARRIER_BIT|
+                               GL_VERTEX_ATTRIB_ARRAY_BARRIER_BIT);
     GLuint GetUniformLoc(const char *const) const;
     void Uniform(const char *, GLuint) const;
     void Uniform(const char *, GLint) const;
@@ -72,7 +73,7 @@ public:
     ParticleSystem(const Mesh &, const GLuint);
     ParticleSystem(const ParticleSystem&) = default;
     void Update(const float, const vec3 *, const float *, const vec3 *,
-                const GLuint, const GLuint);
+                const GLuint, const GLuint, const float);
     void Draw();
     void Destroy();
     void PrintParticles();
@@ -85,12 +86,10 @@ private:
     GLuint max;
 };
 
-struct __attribute__((packed)) Particle {
+struct Particle {
 public:
-    vec3 pos;
-    float _p1; // Padding
-    vec3 vel;
+    vec4 pos;
+    vec4 vel;
     float mass;
     float life;
-    float _p2; // Padding
 };
