@@ -296,9 +296,9 @@ ParticleSystem::ParticleSystem(const Mesh &_mesh, const GLuint _max)
     mesh.billboard = true;
     std::vector<Particle> p;
     p.insert(p.begin(), max, (Particle){
-            .pos = vec4(0, 0, -1, 0),
-            .vel = vec4(0),
-            .mass = 0.1,
+            .pos = vec3(0, 0, -1),
+            .vel = vec3(0),
+            .mass = 40,
             .life = 1
             });
     glGenBuffers(1, &particle_buf);
@@ -319,7 +319,7 @@ ParticleSystem::ParticleSystem(const Mesh &_mesh, const GLuint _max)
                  draw_cmd_buf);
     glBufferData(GL_DRAW_INDIRECT_BUFFER,
                  sizeof(DrawCmd),
-                 &cmd, GL_DYNAMIC_READ_ARB);
+                 &cmd, GL_DYNAMIC_DRAW);
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1,
                      draw_cmd_buf);
 
@@ -345,7 +345,6 @@ ParticleSystem::ParticleSystem(const Mesh &_mesh, const GLuint _max)
                  0);
 }
 
-static int reps = 0;
 void ParticleSystem::Update(const float dt, const vec3 *pos,
                             const float *mass,
                             const vec3 *vel,
@@ -362,15 +361,12 @@ void ParticleSystem::Update(const float dt, const vec3 *pos,
     prog.Uniform("max_particles", max);
     prog.Uniform("dt", dt);
     prog.Uniform("spawn_time", spawn_time);
+    prog.Uniform("own_spawner", own_spawner);
     prog.Uniform("spawner_mass", mass, spawner_len, 1);
     prog.Uniform("spawner_pos", (const float*)pos, spawner_len, 3);
 
     prog.Dispatch({1, 1, 1});
     prog.FinishComputes();
-    if (++reps >= 60) {
-        PrintParticles();
-        exit(1);
-    }
 }
 
 void ParticleSystem::Draw() {

@@ -1,17 +1,17 @@
 #version 450 core
 
-#define G 30
-#define GRAV 10
+#define G 3000
+#define GRAV 667
 #define EPSILON 10
 #define MAX_SPEED 4
 #define ORG_VEL 3
-#define SPAWNER_NUM 1
+#define SPAWNER_NUM 3
 
 layout(local_size_x = 256, local_size_y = 1) in;
 
 struct Particle {
-    vec4  pos;
-    vec4  vel;
+    vec3  pos;
+    vec3  vel;
     float mass;
     float life;
 };
@@ -40,53 +40,49 @@ layout (std430, binding = 2) buffer ParticleSystemBuf {
 uniform uint max_particles;
 uniform float dt;
 uniform float spawn_time;
+uniform uint own_spawner;
 uniform float spawner_mass[SPAWNER_NUM];
 uniform vec3 spawner_pos[SPAWNER_NUM];
 
 void main() {
     const uint id = gl_GlobalInvocationID.x;
-    if (id >=10)
+    if (id > draw_cmd.instanceCount)
         return;
-    // if (id > draw_cmd.instanceCount)
-    //     return;
-    // if (id == draw_cmd.instanceCount) {
-    //     last_spawn_time += dt;
-    //     while (last_spawn_time >= spawn_time) {
-    //         last_spawn_time -= spawn_time;
-    //
-    //         if (draw_cmd.instanceCount < max_particles)
-    //             atomicAdd(draw_cmd.instanceCount, 1);
-    //     }
-    //     return;
-    // }
+    if (id == draw_cmd.instanceCount) {
+        last_spawn_time += dt;
+        while (last_spawn_time >= spawn_time) {
+            last_spawn_time -= spawn_time;
 
-    // BUG:
-    // Modifying corrupts the data
+            if (draw_cmd.instanceCount < max_particles)
+                atomicAdd(draw_cmd.instanceCount, 1);
 
-    // particles[id].pos += particles[id].vel * dt;
-    particles[id].pos = vec4(1, 2, 3, 0);
-    particles[id].vel = vec4(4, 5, 6, 0);
-    particles[id].mass = 7;
-    particles[id].life = 8;
 
-    // float grav_cnst = G * particles[id].mass;
-    // for (uint i = 0; i < SPAWNER_NUM; ++i) {
-    //     float dst = distance(particles[id].pos, spawner_pos[i]);
-    //     if (dst < 0.1)
-    //         continue;
-    //
-    //     float force = (grav_cnst*spawner_mass[i])/
-    //         max(pow(dst, 2)+pow(EPSILON, 2), 0.01);
-    //     vec3 dir = normalize(spawner_pos[i]-particles[id].pos);
-    //     force *= dt/max(particles[id].mass, 0.01);
-    //     particles[id].vel += dir * force;
-    // }
+            particles[id].pos = spawner_pos[own_spawner];
+        }
+        return;
+    }
 
-    // particles[id].vel.y -= GRAV * dt;
-    // float mag = length(particles[id].vel);
-    // if (mag > MAX_SPEED) {
-    //     const vec3 dir = normalize(particles[id].vel);
-    //     mag = min(MAX_SPEED, mag);
-    //     particles[id].vel = dir * mag;
-    // }
+    particles[id].pos += particles[id].vel * dt;
+
+    float grav_cnst = G * particles[id].mass;
+    for (uint i = 0; i < SPAWNER_NUM; ++i) {
+        float dst = distance(particles[id].pos, spawner_pos[i]);
+        if (dst < 0.01)
+            continue;
+
+        const float force = (grav_cnst*spawner_mass[i])/
+            max(pow(dst, 2)+pow(EPSILON, 2), 0.01);
+        vec3 dir = normalize(spawner_pos[i]-particles[id].pos);
+        const float speed =
+            (force/max(particles[id].mass, 0.01))*dt;
+        particles[id].vel += dir * speed;
+    }
+
+    particles[id].vel.y -= (GRAV/max(particles[id].mass, 0.01)) * dt;
+    float mag = length(particles[id].vel);
+    if (mag > MAX_SPEED) {
+        const vec3 dir = normalize(particles[id].vel);
+        mag = min(MAX_SPEED, mag);
+        particles[id].vel = dir * mag;
+    }
 }

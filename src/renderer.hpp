@@ -86,10 +86,15 @@ private:
     GLuint max;
 };
 
+// INFO: _pN are padding as according to glsl std430
 struct Particle {
 public:
-    vec4 pos;
-    vec4 vel;
+    vec3 pos;
+    float _p1;
+    vec3 vel;
     float mass;
     float life;
+    float _p2;
+    float _p3;
+    float _p4;
 };

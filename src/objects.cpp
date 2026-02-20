@@ -16,7 +16,7 @@
 #define SPEED 2
 #define SENSITIVITY .7
 #define MAX_DST 100
-#define SPAWNER_NUM 1
+#define SPAWNER_NUM 3
 #define FARTHEST_SPAWNER 5
 #define G 6.67
 #define GRAV 0.5f
@@ -28,7 +28,6 @@ public:
     vec3 pos[SPAWNER_NUM];
     vec3 vel[SPAWNER_NUM];
     float mass[SPAWNER_NUM];
-    float part_mass[SPAWNER_NUM];
     Mesh *(mesh[SPAWNER_NUM]);
     ParticleSystem *(particles[SPAWNER_NUM]);
 };
@@ -127,11 +126,7 @@ void CreateSpawners() {
 
         spawners.pos[i] = RandomRange(vec3(-30, 1, -30), vec3(30, 1, 30));
         spawners.vel[i] = RandomRange(vec3(-3, 1, -3), vec3(3, 1, 3));
-        spawners.mass[i] = RandomRange(30, 50);
-        if (i > 2)
-            spawners.part_mass[i] = -spawners.mass[i];
-        else
-            spawners.part_mass[i] = spawners.mass[i];
+        spawners.mass[i] = RandomRange(49, 51);
         spawners.mesh[i] = mesh;
         spawners.particles[i] = sys;
     }
@@ -181,7 +176,7 @@ void UpdateSpawners(const float dt) {
 void DrawSpawners() {
     for (unsigned int i = 0; i < SPAWNER_NUM; ++i) {
         spawners.mesh[i]->pos = spawners.pos[i];
-        // spawners.mesh[i]->Draw();
+        spawners.mesh[i]->Draw();
         spawners.particles[i]->Draw();
     }
 }
