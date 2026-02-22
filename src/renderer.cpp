@@ -362,6 +362,7 @@ void ParticleSystem::Update(const float dt, const vec3 *pos,
     prog.Uniform("dt", dt);
     prog.Uniform("spawn_time", spawn_time);
     prog.Uniform("own_spawner", own_spawner);
+    prog.Uniform("particle_life", 3.0f);
     prog.Uniform("spawner_mass", mass, spawner_len, 1);
     prog.Uniform("spawner_pos", (const float*)pos, spawner_len, 3);
 

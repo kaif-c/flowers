@@ -151,7 +151,7 @@ void UpdateSpawners(const float dt) {
                 vec3(spawners.pos[i].x, 2, spawners.pos[i].z)) *
                 (GRAV * dt);
         }
-        spawners.vel[i] = clamp(spawners.vel[i], vec3(-4), vec3(4));
+
         float mag = length(spawners.vel[i]);
         if (mag > MAX_SPAWNER_VEL) {
             const vec3 dir = normalize(spawners.vel[i]);
