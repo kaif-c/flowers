@@ -122,7 +122,7 @@ void CreateSpawners() {
                               {GL_VERTEX_SHADER, GL_FRAGMENT_SHADER});
         Mesh particle_mesh(particle_verts, particle_elems,
                            particle_prog);
-        ParticleSystem *sys = new ParticleSystem(particle_mesh, 100);
+        ParticleSystem *sys = new ParticleSystem(particle_mesh, 1000000);
 
         spawners.pos[i] = RandomRange(vec3(-30, 1, -30), vec3(30, 1, 30));
         spawners.vel[i] = RandomRange(vec3(-3, 1, -3), vec3(3, 1, 3));
@@ -161,14 +161,13 @@ void UpdateSpawners(const float dt) {
         spawners.vel[i].y = 0;
         spawners.particles[i]->Update(dt, spawners.pos, spawners.mass,
                                       spawners.vel,
-                                      SPAWNER_NUM, i, 0.1);
+                                      SPAWNER_NUM, i, 0.0005);
     }
     Program::FinishComputes();
 
     if (IsKeyDown(GLFW_KEY_F1)) {
-        spawners.particles[0]->PrintParticles();
-        // spawners.particles[0]->PrintParticles();
-        // spawners.particles[0]->PrintParticles();
+        for (int i = 0; i < SPAWNER_NUM; ++i)
+            spawners.particles[i]->PrintParticles();
         exit(1);
     }
 }
@@ -176,7 +175,7 @@ void UpdateSpawners(const float dt) {
 void DrawSpawners() {
     for (unsigned int i = 0; i < SPAWNER_NUM; ++i) {
         spawners.mesh[i]->pos = spawners.pos[i];
-        spawners.mesh[i]->Draw();
+        // spawners.mesh[i]->Draw();
         spawners.particles[i]->Draw();
     }
 }

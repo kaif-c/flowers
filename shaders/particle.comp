@@ -4,7 +4,7 @@
 #define GRAV 667
 #define EPSILON 10
 #define MAX_SPEED 4
-#define ORG_VEL 15
+#define SPREAD 15
 #define SPAWNER_NUM 3
 
 layout(local_size_x = 256, local_size_y = 1) in;
@@ -34,7 +34,7 @@ layout (std430, binding = 1) buffer DrawCmdBuf {
 
 layout (std430, binding = 2) buffer ParticleSystemBuf {
     float last_spawn_time;
-    int dead_inds[];
+    int is_ind_dead[];
 };
 
 uniform uint max_particles;
@@ -52,16 +52,25 @@ float random(float seed) {
     return (fract(seed)*2)-1;
 }
 
-void init_particle(const uint id) {
+void init_particle(inout uint id) {
     if (draw_cmd.instanceCount < max_particles)
         atomicAdd(draw_cmd.instanceCount, 1);
+    else {
+        for (int i = 0; i < max_particles; ++i) {
+            if (is_ind_dead[i] != 0) {
+                id = i;
+                atomicExchange(is_ind_dead[id], 0);
+            }
+        }
+    }
 
     particles[id].pos = spawner_pos[own_spawner];
     particles[id].vel = vec3(
                 random(particles[id].pos.x*particles[id].pos.y),
                 random(particles[id].pos.y*particles[id].pos.z),
                 random(particles[id].pos.x*particles[id].pos.z)
-            ) * ORG_VEL;
+            ) * SPREAD;
+    particles[id].mass = 40;
     particles[id].life = particle_life +
         random(particles[id].pos.y*-particles[id].pos.z);
 }
@@ -96,7 +105,7 @@ void clamp_particle_vel(const uint id) {
 }
 
 void main() {
-    const uint id = gl_GlobalInvocationID.x;
+    uint id = gl_GlobalInvocationID.x;
     if (id > draw_cmd.instanceCount)
         return;
     if (id == draw_cmd.instanceCount) {
@@ -107,8 +116,10 @@ void main() {
         }
         return;
     }
-    if (particles[id].life <= 0)
+    if (particles[id].life <= 0) {
+        atomicExchange(is_ind_dead[id], 1);
         return;
+    }
 
     particles[id].pos += particles[id].vel * dt;
     update_particle_vel(id);

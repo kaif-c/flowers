@@ -294,19 +294,12 @@ ParticleSystem::ParticleSystem(const Mesh &_mesh, const GLuint _max)
     : mesh(_mesh), prog({4}, {GL_COMPUTE_SHADER}), max(_max) {
 
     mesh.billboard = true;
-    std::vector<Particle> p;
-    p.insert(p.begin(), max, (Particle){
-            .pos = vec3(0, 0, -1),
-            .vel = vec3(0),
-            .mass = 40,
-            .life = 1
-            });
     glGenBuffers(1, &particle_buf);
     glBindBuffer(GL_SHADER_STORAGE_BUFFER,
                  particle_buf);
     glBufferData(GL_SHADER_STORAGE_BUFFER,
                  max * sizeof(Particle),
-                 p.data(), GL_DYNAMIC_READ_ARB);
+                 nullptr, GL_DYNAMIC_READ_ARB);
 
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0,
                      particle_buf);
@@ -323,18 +316,15 @@ ParticleSystem::ParticleSystem(const Mesh &_mesh, const GLuint _max)
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1,
                      draw_cmd_buf);
 
-    std::vector<GLint> dead_inds_def;
-    dead_inds_def.reserve(max + 1);
-    dead_inds_def.push_back(0); // INFO: index 0 is a float
-    for (GLuint i = 0; i < max; ++i)
-        dead_inds_def.push_back(i);
+    std::vector<GLint> is_ind_dead;
+    is_ind_dead.insert(is_ind_dead.begin(), max + 1, 0);
 
     glGenBuffers(1, &dead_inds_buf);
     glBindBuffer(GL_SHADER_STORAGE_BUFFER,
                  dead_inds_buf);
     glBufferData(GL_SHADER_STORAGE_BUFFER,
                  max * sizeof(GLint) + sizeof(float),
-                 dead_inds_def.data(), GL_DYNAMIC_READ_ARB);
+                 is_ind_dead.data(), GL_DYNAMIC_READ_ARB);
 
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2,
                      dead_inds_buf);
@@ -357,6 +347,8 @@ void ParticleSystem::Update(const float dt, const vec3 *pos,
                      particle_buf);
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1,
                      draw_cmd_buf);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2,
+                     dead_inds_buf);
 
     prog.Uniform("max_particles", max);
     prog.Uniform("dt", dt);
@@ -366,7 +358,7 @@ void ParticleSystem::Update(const float dt, const vec3 *pos,
     prog.Uniform("spawner_mass", mass, spawner_len, 1);
     prog.Uniform("spawner_pos", (const float*)pos, spawner_len, 3);
 
-    prog.Dispatch({1, 1, 1});
+    prog.Dispatch({max/255 + 1, 1, 1});
     prog.FinishComputes();
 }
 
@@ -405,11 +397,11 @@ void ParticleSystem::PrintParticles() {
     INF("Printing {} particles\n", count);
     glUnmapBuffer(GL_SHADER_STORAGE_BUFFER);
 
-    GLint *const dead_inds = MapSSBO<GLint>(dead_inds_buf);
-    println("last spawn time = {}", *(float*)dead_inds);
+    GLint *const is_ind_dead = MapSSBO<GLint>(dead_inds_buf);
+    println("last spawn time = {}", *(float*)is_ind_dead);
     print("dead indices =\n[");
     for (GLuint i = 1; i < max + 1; ++i)
-        print("{}, ", dead_inds[i]);
+        print("{}, ", is_ind_dead[i]);
     print("\b\b]\n");
 
     Particle *const particles = MapSSBO<Particle>(particle_buf);
