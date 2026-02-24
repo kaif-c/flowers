@@ -6,6 +6,7 @@
 #include <cstddef>
 #include <cstdio>
 #include <cstdlib>
+#include <memory>
 #include <print>
 #include <vector>
 #include "glm/ext/matrix_float4x4.hpp"
@@ -13,6 +14,13 @@
 #include "glm/ext/vector_float3.hpp"
 #include "glm/gtc/type_ptr.hpp"
 #include "logger.hpp"
+
+enum {
+    SSBO_PARTICLE,
+    SSBO_DRAWCMD,
+    SSBO_DEADINDS,
+    SSBO_NUM
+};
 
 using namespace glm;
 using namespace std;
@@ -52,7 +60,7 @@ string shaders_src[] = {
     },
 };
 
-bool shader_compile_check(GLuint shade, GLuint type)
+static bool shader_compile_check(GLuint shade, GLuint type)
 {
     GLint success;
     glGetShaderiv(shade, GL_COMPILE_STATUS, &success);
@@ -70,7 +78,7 @@ bool shader_compile_check(GLuint shade, GLuint type)
     return false;
 }
 
-bool link_check(GLuint prog)
+static bool link_check(GLuint prog)
 {
     GLint success;
     glGetProgramiv(prog, GL_LINK_STATUS, &success);
@@ -107,7 +115,7 @@ Texture::Texture(const Texture &old) {
     id = old.id;
 }
 
-void Texture::Destroy() {
+Texture::~Texture() {
     glDeleteTextures(1, &id);
 }
 
@@ -123,9 +131,9 @@ void Texture::GenerateMipMap() {
 
 Program::Program(vector<GLuint> ids, vector<GLuint> types) {
     if (ids.size() != types.size()) {
-        ERR("Number of ids dont match "
-                "types in Program Generation");
-        return;
+        ERR("Number of ids({}) and types({}) mismatch",
+            ids.size(), types.size());
+        exit(1);
     }
 
     vector<GLuint> shaders;
@@ -160,13 +168,18 @@ Program::Program(const Program &old) {
     program = old.program;
 }
 
+Program::~Program() {
+    glDeleteProgram(program);
+}
+
 void Program::Use() const {
     glUseProgram(program);
 }
 
-void Program::Dispatch(const vector<Texture> textures, const ivec3 wg) {
+void Program::Dispatch(const vector<Texture*> textures,
+                       const ivec3 wg) {
     for (unsigned int i = 0; i < textures.size(); ++i) {
-        glBindImageTexture(i, textures[i].id, 0, GL_FALSE, 0,
+        glBindImageTexture(i, textures[i]->id, 0, GL_FALSE, 0,
                            GL_READ_WRITE, GL_RGBA8);
     }
     Dispatch(wg);
@@ -223,10 +236,6 @@ void Program::Uniform(const char *name, const mat4 data) const {
                        value_ptr(data));
 }
 
-void Program::Destroy() {
-    glDeleteProgram(program);
-}
-
 static void enable_attrib(GLuint ind, GLint comps, GLuint64 offset) {
     glEnableVertexAttribArray(ind);
     glVertexAttribPointer(ind, comps, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offset);
@@ -234,7 +243,7 @@ static void enable_attrib(GLuint ind, GLint comps, GLuint64 offset) {
 
 Mesh::Mesh(const vector<Vertex> &verts,
            const vector<GLuint> &elems,
-           const Program &prog)
+           const shared_ptr<Program> prog)
     : program(prog), pos(0, 0, 0) {
     GLuint bo[2];
     glGenBuffers(2, bo);
@@ -258,21 +267,21 @@ Mesh::Mesh(const vector<Vertex> &verts,
 }
 
 void Mesh::UpdateProjection() const {
-    program.Use();
+    program->Use();
     glBindVertexArray(id);
     mat4 mvp = mat4(1.0);
     if (!still) {
         if (!billboard)
             mvp = cam.proj;
         else 
-            program.Uniform("u_proj", cam.proj);
+            program->Uniform("u_proj", cam.proj);
         mvp = rotate(mvp, cam.rot.x, vec3(1, 0, 0));
         mvp = rotate(mvp, cam.rot.y, vec3(0, 1, 0));
         mvp = rotate(mvp, cam.rot.z, vec3(0, 0, 1));
         mvp = translate(mvp, cam.pos);
         mvp = translate(mvp, pos);
     }
-    program.Uniform("u_transform", mvp);
+    program->Uniform("u_transform", mvp);
 }
 
 void Mesh::Draw() const {
@@ -285,54 +294,50 @@ GLuint Mesh::GetElemCnt() const {
     return elem_cnt;
 }
 
-void Mesh::Destroy() {
+Mesh::~Mesh() {
     glDeleteVertexArrays(1, &id);
-    program.Destroy();
 }
 
-ParticleSystem::ParticleSystem(const Mesh &_mesh, const GLuint _max)
-    : mesh(_mesh), prog({4}, {GL_COMPUTE_SHADER}), max(_max) {
-
-    mesh.billboard = true;
-    glGenBuffers(1, &particle_buf);
+ParticleSystem::ParticleSystem(unique_ptr<Mesh> _mesh, const GLuint _max)
+    : mesh(std::move(_mesh)), prog({4}, {GL_COMPUTE_SHADER}),
+        max(_max) {
+    mesh->billboard = true;
+    glGenBuffers(SSBO_NUM, ssbo);
     glBindBuffer(GL_SHADER_STORAGE_BUFFER,
-                 particle_buf);
+                 ssbo[SSBO_PARTICLE]);
     glBufferData(GL_SHADER_STORAGE_BUFFER,
                  max * sizeof(Particle),
-                 nullptr, GL_DYNAMIC_READ_ARB);
-
-    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0,
-                     particle_buf);
+                 nullptr, GL_DYNAMIC_DRAW);
+    BindSSBOBase(SSBO_PARTICLE);
 
 
     DrawCmd cmd = {0};
     cmd.count = 6;
-    glGenBuffers(1, &draw_cmd_buf);
     glBindBuffer(GL_DRAW_INDIRECT_BUFFER,
-                 draw_cmd_buf);
+                 ssbo[SSBO_DRAWCMD]);
     glBufferData(GL_DRAW_INDIRECT_BUFFER,
                  sizeof(DrawCmd),
                  &cmd, GL_DYNAMIC_DRAW);
-    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1,
-                     draw_cmd_buf);
+    BindSSBOBase(SSBO_DRAWCMD);
 
     std::vector<GLint> is_ind_dead;
     is_ind_dead.insert(is_ind_dead.begin(), max + 1, 0);
 
-    glGenBuffers(1, &dead_inds_buf);
     glBindBuffer(GL_SHADER_STORAGE_BUFFER,
-                 dead_inds_buf);
+                 ssbo[SSBO_DEADINDS]);
     glBufferData(GL_SHADER_STORAGE_BUFFER,
                  max * sizeof(GLint) + sizeof(float),
-                 is_ind_dead.data(), GL_DYNAMIC_READ_ARB);
-
-    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2,
-                     dead_inds_buf);
+                 is_ind_dead.data(), GL_DYNAMIC_DRAW);
+    BindSSBOBase(SSBO_DEADINDS);
 
     glBindBuffer(GL_SHADER_STORAGE_BUFFER,
                  0);
     glBindBuffer(GL_DRAW_INDIRECT_BUFFER,
                  0);
+}
+
+ParticleSystem::~ParticleSystem() {
+    glDeleteBuffers(SSBO_NUM, ssbo);
 }
 
 void ParticleSystem::Update(const float dt, const vec3 *pos,
@@ -343,12 +348,8 @@ void ParticleSystem::Update(const float dt, const vec3 *pos,
                             const float spawn_time) {
     prog.Use();
 
-    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0,
-                     particle_buf);
-    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1,
-                     draw_cmd_buf);
-    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2,
-                     dead_inds_buf);
+    for (GLuint i = 0; i < SSBO_NUM; ++i)
+        BindSSBOBase(i);
 
     prog.Uniform("max_particles", max);
     prog.Uniform("dt", dt);
@@ -359,28 +360,23 @@ void ParticleSystem::Update(const float dt, const vec3 *pos,
     prog.Uniform("spawner_pos", (const float*)pos, spawner_len, 3);
 
     prog.Dispatch({max/255 + 1, 1, 1});
-    prog.FinishComputes();
 }
 
 void ParticleSystem::Draw() {
-    mesh.UpdateProjection();
-    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0,
-                     particle_buf);
-    glBindBuffer(GL_DRAW_INDIRECT_BUFFER, draw_cmd_buf);
+    mesh->UpdateProjection();
+    BindSSBOBase(SSBO_PARTICLE);
+    glBindBuffer(GL_DRAW_INDIRECT_BUFFER, ssbo[SSBO_DRAWCMD]);
     glDrawElementsIndirect(GL_TRIANGLES, GL_UNSIGNED_INT, nullptr);
 }
 
-void ParticleSystem::Destroy() {
-    glDeleteBuffers(1, &particle_buf);
-    glDeleteBuffers(1, &draw_cmd_buf);
-    glDeleteBuffers(1, &dead_inds_buf);
-    prog.Destroy();
-    mesh.Destroy();
+void ParticleSystem::BindSSBOBase(const GLuint id) const {
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, id,
+                     ssbo[id]);
 }
 
 template<typename T>
-static T *const MapSSBO(GLuint buf) {
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, buf);
+T *const ParticleSystem::MapSSBO(GLuint ind) const {
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssbo[ind]);
     return (T*)glMapBuffer(
                 GL_SHADER_STORAGE_BUFFER,
                 GL_READ_ONLY
@@ -390,21 +386,23 @@ static T *const MapSSBO(GLuint buf) {
 void ParticleSystem::PrintParticles() {
     prog.Use();
     INF("Particle Buf={}; DrawCmd Buf={}; Dead Indices Buf={}",
-            particle_buf, draw_cmd_buf, dead_inds_buf);
+            ssbo[SSBO_PARTICLE],
+            ssbo[SSBO_DRAWCMD],
+            ssbo[SSBO_DEADINDS]);
 
-    DrawCmd *const cmd = MapSSBO<DrawCmd>(draw_cmd_buf);
+    DrawCmd *const cmd = MapSSBO<DrawCmd>(SSBO_DRAWCMD);
     GLuint count = cmd->instanceCount;
     INF("Printing {} particles\n", count);
     glUnmapBuffer(GL_SHADER_STORAGE_BUFFER);
 
-    GLint *const is_ind_dead = MapSSBO<GLint>(dead_inds_buf);
+    GLint *const is_ind_dead = MapSSBO<GLint>(SSBO_DEADINDS);
     println("last spawn time = {}", *(float*)is_ind_dead);
     print("dead indices =\n[");
     for (GLuint i = 1; i < max + 1; ++i)
         print("{}, ", is_ind_dead[i]);
     print("\b\b]\n");
 
-    Particle *const particles = MapSSBO<Particle>(particle_buf);
+    Particle *const particles = MapSSBO<Particle>(SSBO_PARTICLE);
     for (GLuint i = 0; i < 100; ++i) {
         println("[{}]:pos=({},{},{}), vel=({},{},{}), mass={}, life={}",
                 i,

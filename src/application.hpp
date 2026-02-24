@@ -14,7 +14,10 @@ extern Camera cam;
 
 int CreateWindow();
 void CloseWindow();
-int UpdateApp();
+int UpdateWindow();
+void Render();
+
+float GetDT();
 bool IsKeyDown(int key);
 void ToggleCursor();
 vec2 GetCursorPos();

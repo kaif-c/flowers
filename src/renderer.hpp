@@ -5,6 +5,7 @@
 #include "glm/ext/vector_int3.hpp"
 #include <GL/gl.h>
 #include <GL/glext.h>
+#include <memory>
 #include <vector>
 
 using namespace std;
@@ -14,7 +15,7 @@ class Texture {
 public:
     Texture(const GLsizei, const GLsizei, const int);
     Texture(const Texture &);
-    void Destroy();
+    ~Texture();
     void Use(const int) const;
     void GenerateMipMap();
 
@@ -26,8 +27,9 @@ class Program {
 public:
     Program(vector<GLuint>, vector<GLuint>);
     Program(const Program &);
+    ~Program();
     void Use() const;
-    static void Dispatch(const vector<Texture>, const ivec3);
+    static void Dispatch(const vector<Texture*>, const ivec3);
     static void Dispatch(const ivec3);
     static void FinishComputes(const GLuint =
                                GL_SHADER_IMAGE_ACCESS_BARRIER_BIT|
@@ -39,7 +41,6 @@ public:
     void Uniform(const char *, float) const;
     void Uniform(const char *, const float *, GLint, GLint) const;
     void Uniform(const char *, const mat4) const;
-    void Destroy();
 private:
     GLuint program;
 };
@@ -52,17 +53,19 @@ public:
 
 class Mesh {
 public:
-    Program program;
+    shared_ptr<Program> program;
     vec3 pos;
     GLuint id;
     bool still = false;
     bool billboard = false;
 public:
-    Mesh(const vector<Vertex> &, const vector<GLuint> &, const Program &);
+    Mesh(const vector<Vertex> &,
+            const vector<GLuint> &,
+            const shared_ptr<Program>);
     Mesh(const Mesh &) = default;
+    ~Mesh();
     void UpdateProjection() const;
     void Draw() const ;
-    void Destroy();
     GLuint GetElemCnt() const;
 private:
     GLuint elem_cnt;
@@ -70,19 +73,19 @@ private:
 
 class ParticleSystem {
 public:
-    ParticleSystem(const Mesh &, const GLuint);
-    ParticleSystem(const ParticleSystem&) = default;
+    ParticleSystem(unique_ptr<Mesh>, const GLuint);
+    ~ParticleSystem();
     void Update(const float, const vec3 *, const float *, const vec3 *,
                 const GLuint, const GLuint, const float);
     void Draw();
-    void Destroy();
     void PrintParticles();
 private:
-    Mesh mesh;
+    void BindSSBOBase(const GLuint) const;
+    template<typename T> T *const MapSSBO(GLuint) const;
+private:
+    unique_ptr<Mesh> mesh;
     Program prog;
-    GLuint particle_buf;
-    GLuint draw_cmd_buf;
-    GLuint dead_inds_buf;
+    GLuint ssbo[3];
     GLuint max;
 };
 

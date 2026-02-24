@@ -4,7 +4,7 @@
 #define GRAV 667
 #define EPSILON 10
 #define MAX_SPEED 4
-#define SPREAD 15
+#define SPREAD 10
 #define SPAWNER_NUM 3
 
 layout(local_size_x = 256, local_size_y = 1) in;

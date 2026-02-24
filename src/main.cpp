@@ -3,38 +3,44 @@
 #include "renderer.hpp"
 #include <GL/gl.h>
 #include <GL/glext.h>
+#include <memory>
 #include <vector>
 
 #define IMG_SIZE 256
 
+void GenTextures(Texture *tex) {
+    Program tex_generator({2}, {GL_COMPUTE_SHADER});
+    tex_generator.Use();
+    tex_generator.Dispatch({tex},
+                           {IMG_SIZE, 1, 1});
+    tex_generator.FinishComputes();
+}
+
 int main() {
+    // Create window
     if (CreateWindow())
         return 1;
+    // Generate the textures
     Texture floor_tex(IMG_SIZE, IMG_SIZE, 0);
-    Texture flower_tex(IMG_SIZE, IMG_SIZE, 1);
-    Program tex_generator({2}, {GL_COMPUTE_SHADER});
-
-    tex_generator.Use();
-    tex_generator.Dispatch({floor_tex, flower_tex}, {IMG_SIZE, 1, 1});
-    tex_generator.FinishComputes();
-    tex_generator.Destroy();
-
+    GenTextures(&floor_tex);
     floor_tex.GenerateMipMap();
-    flower_tex.GenerateMipMap();
 
+    // Basic shader programs 
+    shared_ptr<Program> tex_prog =
+        make_shared<Program>(
+            vector<GLuint>({0, 3}),
+            vector<GLuint>({GL_VERTEX_SHADER, GL_FRAGMENT_SHADER}));
+
+    // Allocate data for meshes
     vector<GLuint> quad_elems = {
         0, 1, 2, 2, 3, 0
     };
-
-    Program floor_prog({0, 3}, {GL_VERTEX_SHADER, GL_FRAGMENT_SHADER});
-    Program tex_prog({0, 3}, {GL_VERTEX_SHADER, GL_FRAGMENT_SHADER});
     vector<Vertex> tex_verts = {
         {{-.5, -.5, -2}, {0, 0}},
         {{ .5, -.5, -2}, {1, 0}},
         {{ .5,  .5, -2}, {1, 1}},
         {{-.5,  .5, -2}, {0, 1}},
     };
-    Mesh tex_mesh(tex_verts, quad_elems, tex_prog);
 
     vector<Vertex> verts = {
         {{-250, -.5, 250}, {0, 0}},
@@ -42,21 +48,29 @@ int main() {
         {{ 250, -.5,-250}, {250, 250}},
         {{-250, -.5,-250}, {0, 250}},
     };
-    Mesh floor_mesh(verts, quad_elems, floor_prog);
 
+    // Generate meshes using the previous data
+    Mesh tex_mesh(tex_verts, quad_elems, tex_prog);
+    Mesh floor_mesh(verts, quad_elems, tex_prog);
+
+    // Create Spawners
     CreateSpawners();
-    while (UpdateApp()) {
-        // floor_tex.Use(0);
-        // floor_mesh.Draw();
-        flower_tex.Use(0);
+
+    // Game loop
+    while (UpdateWindow()) {
+        // Update physics and interactions
+        const float dt = GetDT();
+        UpdatePlayer(dt);
+        UpdateSpawners(dt);
+
+        // Rendering
+        floor_tex.Use(0);
+        floor_mesh.Draw();
         tex_mesh.Draw();
         DrawSpawners();
+        Render();
     }
-    DestroySpawners();
-    floor_tex.Destroy();
-    floor_mesh.Destroy();
-    flower_tex.Destroy();
-    tex_mesh.Destroy();
+    // Close everything
     CloseWindow();
     return 0;
 }

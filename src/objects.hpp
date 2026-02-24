@@ -1,6 +1,5 @@
 #pragma once
-void UpdatePlayer(const float);
 void CreateSpawners();
+void UpdatePlayer(const float);
 void UpdateSpawners(const float);
 void DrawSpawners();
-void DestroySpawners();

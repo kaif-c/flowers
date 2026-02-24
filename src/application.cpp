@@ -1,7 +1,6 @@
 #include "glm/ext/matrix_clip_space.hpp"
 #include "glm/ext/vector_float3.hpp"
 #include "glm/trigonometric.hpp"
-#include "objects.hpp"
 #include <GL/gl.h>
 
 #define DEF(TYPE, NAME) TYPE NAME;
@@ -14,7 +13,7 @@
 #include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
 
-#define TITLE "Sorry - Flowers"
+#define TITLE "Flowers"
 #define BG_COLOR 3/255.0, 182/255.0, 252/255.0, 1
 #define FOV 45.0f
 
@@ -29,9 +28,11 @@ static float aspc_ratio = 0;
 static bool is_mouse_locked = false;
 
 static float last_time = 0;
-static float dt;
 static bool is_cursor_locked = false;
 
+/**
+ * \brief GLFW callback when window resizes
+ */
 void on_resize(GLFWwindow *t_wind, int t_width, int t_height)
 {
     wind_size.x = t_width;
@@ -41,11 +42,17 @@ void on_resize(GLFWwindow *t_wind, int t_width, int t_height)
     cam.proj = perspective(radians(FOV), aspc_ratio, 0.1f, 100.0f);
 }
 
+/**
+ * \brief Loads all used OpenGL functions
+ */
 void load_gl() {
     #define DEF(TYPE, NAME) NAME = (TYPE)glfwGetProcAddress(#NAME)
     #include "gl_func.hpp"
 }
 
+/**
+ * \brief OpenGL message callback
+ */
 void APIENTRY gl_error_callback(GLuint source, GLuint type, GLuint id,
         GLuint severity, GLsizei length, const GLchar *message,
         const void *params) {
@@ -77,6 +84,10 @@ void APIENTRY gl_error_callback(GLuint source, GLuint type, GLuint id,
         exit(type);
 }
 
+/**
+ * \brief Initializes GLFW & OpenGL. Then creates a window with valid context
+ * \return zero if no error occured
+ */
 int CreateWindow() {
     if (!glfwInit())
         THROW(1, "Cannot initialize GLFW");
@@ -94,19 +105,26 @@ int CreateWindow() {
     glfwMakeContextCurrent(glfw_wind);
     glfwSetFramebufferSizeCallback(glfw_wind, &on_resize);
 
-    glfwSwapInterval(1);
+    // glfwSwapInterval(1);
 
     const char *glver = (char*)glGetString(GL_VERSION);
     INF("Created GLFW window\nOpenGL: {}", glver);
     load_gl();
     glEnable(GL_DEPTH_TEST);
     glDisable(GL_BLEND);
-    // glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    glDisable(GL_CULL_FACE);
+    glEnable(GL_CULL_FACE);
+    glCullFace(GL_FRONT_FACE);
 
+    // OpenGL message callbacks
     glEnable(GL_DEBUG_OUTPUT);
     glDebugMessageCallback(gl_error_callback, 0);
     glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DONT_CARE, 0, NULL, GL_TRUE);
+
+    // Disable notifications in release mode
+#ifdef NDEBUG
+    glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DEBUG_SEVERITY_NOTIFICATION, 0, NULL, GL_FALSE);
+#endif
+
     ToggleCursor();
 
     cam.proj = mat4(1);
@@ -115,45 +133,71 @@ int CreateWindow() {
     return 0;
 }
 
+/**
+ * \brief Terminates GLFW with its context
+ */
 void CloseWindow() {
     glfwTerminate();
 }
 
+/**
+ * \brief Renders all drawn meshes
+ */
 void Render() {
     glfwSwapBuffers(glfw_wind);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glClearColor(BG_COLOR);
 }
 
-int UpdateApp() {
+/**
+ * \brief Updates inputs
+ * \return zero if window should close
+ */
+int UpdateWindow() {
     glfwPollEvents();
-    float time = glfwGetTime();
-    dt = time - last_time;
-    last_time = time;
-
-    UpdatePlayer(dt);
-    UpdateSpawners(dt);
-
-    Render();
     return !glfwWindowShouldClose(glfw_wind);
 }
 
+/**
+ * \brief Gets the current delta time
+ */
+float GetDT() {
+    float time = glfwGetTime();
+    float dt = time - last_time;
+    last_time = time;
+    return dt;
+}
+
+/**
+ * \brief See if a key is down or not
+ * \param key is the GLFW key to check for
+ * \return true if the key is pressed
+ */
 bool IsKeyDown(int key) {
     return glfwGetKey(glfw_wind, key) == GLFW_PRESS;
 }
 
+/**
+ * \brief Toggles the lock state of the cursor (fps cursor toggle)
+ */
 void ToggleCursor() {
     glfwSetInputMode(glfw_wind, GLFW_CURSOR, is_cursor_locked?
                      GLFW_CURSOR_NORMAL : GLFW_CURSOR_DISABLED);
     is_cursor_locked = !is_cursor_locked;
 }
 
+/**
+ * \return relative position of cursor (-1,-1 to 1,1)
+ */
 vec2 GetCursorPos() {
     double xpos, ypos;
     glfwGetCursorPos(glfw_wind, &xpos, &ypos);
-    return vec2(xpos/wind_size.x, ypos/wind_size.y);
+    return vec2(xpos/wind_size.x, ypos/wind_size.y)*2.0f;
 }
 
+/**
+ * \return The current time after window creation
+ */
 float GetTime() {
     return glfwGetTime();
 }
