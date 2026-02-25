@@ -1,5 +1,4 @@
 #include "objects.hpp"
-#include "logger.hpp"
 #include "renderer.hpp"
 #include "application.hpp"
 #include "glm/common.hpp"
@@ -8,6 +7,7 @@
 #include "glm/ext/vector_float3.hpp"
 #include "glm/geometric.hpp"
 #include "renderer.hpp"
+#include "flower_img.c"
 #include <GL/gl.h>
 #include <GL/glext.h>
 #include <GLFW/glfw3.h>
@@ -40,6 +40,7 @@ static vec2 pl_front = vec2(0, 1);
 static vec2 pl_right = vec2(1, 0);
 
 static Spawners spawners;
+static unique_ptr<Texture> particle_tex;
 /**
  * \brief Calculate the front and right vectors of camera
 */
@@ -160,6 +161,8 @@ void CreateSpawners() {
         {{ .1,  .1, 0}, {1, 1}},
         {{-.1,  .1, 0}, {0, 1}},
     };
+    // Using MipMaps here causes BUG
+    particle_tex = make_unique<Texture>((char*)&flower_src, 0, 0);
 
     for (unsigned int i = 0; i < SPAWNER_NUM; ++i)
         CreateSpawner(i, particle_verts, particle_elems);
@@ -209,6 +212,7 @@ void UpdateSpawners(const float dt) {
 }
 
 void DrawSpawners() {
+    particle_tex->Use(0);
     for (unsigned int i = 0; i < SPAWNER_NUM; ++i) {
         spawners.particles[i]->Draw();
     }

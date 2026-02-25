@@ -13,14 +13,46 @@ using namespace glm;
 
 class Texture {
 public:
-    Texture(const GLsizei, const GLsizei, const int);
+    /**
+    * \brief Generate an empty texture
+    * \param width 
+    * \param height
+    * \param unit the texture unit where image is stored
+    */
+    Texture(const GLsizei, const GLsizei, const int, const GLuint);
+    /**
+    * \brief Generate a texture from image
+    * \param image pointer to GIMP generated image
+    * \param unit the texture unit
+    * \param levels Levels of MipMaps
+    */
+    Texture(const char *const, const int, const GLuint);
+    /**
+    * \brief Generate a texture from pixel data
+    * \param width of texture
+    * \param height of texture
+    * \param pixels pixel data of the image
+    * \param id pointer to texture id for OpenGL
+    * \param unit the texture unit
+    * \param levels Levels of MipMaps
+    */
+    void FromPixels(const GLuint, const GLuint, const unsigned char *,
+            const GLuint, const GLuint);
     Texture(const Texture &);
     ~Texture();
+    /**
+    * \brief Binds the texture for render
+    * \param unit the unit where the texture should bind
+    */
     void Use(const int) const;
-    void GenerateMipMap();
+    void GenerateMipMap() const;
 
 public:
     GLuint id;
+private:
+    GLuint width;
+    GLuint height;
+    GLuint levels;
 };
 
 class Program {

@@ -1,6 +1,7 @@
 #include "application.hpp"
 #include "objects.hpp"
 #include "renderer.hpp"
+#include "flower_img.c"
 #include <GL/gl.h>
 #include <GL/glext.h>
 #include <memory>
@@ -20,8 +21,8 @@ int main() {
     // Create window
     if (CreateWindow())
         return 1;
-    // Generate the textures
-    Texture floor_tex(IMG_SIZE, IMG_SIZE, 0);
+    // Generate the floor texture
+    Texture floor_tex(IMG_SIZE, IMG_SIZE, 0, 3);
     GenTextures(&floor_tex);
     floor_tex.GenerateMipMap();
 

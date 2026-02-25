@@ -6,6 +6,7 @@
 #include <cstddef>
 #include <cstdio>
 #include <cstdlib>
+#include <fstream>
 #include <memory>
 #include <print>
 #include <vector>
@@ -96,19 +97,43 @@ static bool link_check(GLuint prog)
     return false;
 }
 
-Texture::Texture(const GLsizei width, const GLsizei height,
-                 const int unit) {
+void Texture::FromPixels(const GLuint width,
+                const GLuint height,
+                const unsigned char *pixels,
+                const GLuint unit,
+                const GLuint levels) {
+    this->levels = levels;
+    this->width = width;
+    this->height = height;
+
     glGenTextures(1, &id);
     Use(unit);
-
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER,
+                        (levels > 0)?
+                            GL_LINEAR_MIPMAP_LINEAR : GL_LINEAR
+                    );
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8,
                  width, height, 0, GL_RGBA,
-                 GL_UNSIGNED_BYTE, 0);
-    glTexStorage2D(GL_TEXTURE_2D, 6, GL_RGBA8, width, height);
+                 GL_UNSIGNED_BYTE, pixels);
+    if (levels > 0)
+        glTexStorage2D(GL_TEXTURE_2D, levels, GL_RGBA8, width, height);
+}
+
+Texture::Texture(const GLsizei width, const GLsizei height,
+                 const int unit, const GLuint levels) {
+    FromPixels(width, height, nullptr, unit, levels);
+}
+
+Texture::Texture(const char *const img, const int unit,
+                 const GLuint levels) {
+    GLuint width = *(unsigned int*)img;
+    GLuint height = *((unsigned int*)img + 1);
+    unsigned char *pixels = (unsigned char*)
+        (img + sizeof(unsigned int)*3 + sizeof(char*));
+    FromPixels(width, height, pixels, unit, levels);
 }
 
 Texture::Texture(const Texture &old) {
@@ -124,9 +149,15 @@ void Texture::Use(const int unit) const {
     glBindTexture(GL_TEXTURE_2D, id);
 }
 
-void Texture::GenerateMipMap() {
-    Use(0);
-    glGenerateMipmap(GL_TEXTURE_2D);
+void Texture::GenerateMipMap() const {
+    if (levels > 0) {
+        Use(0);
+        glGenerateMipmap(GL_TEXTURE_2D);
+    }
+    else {
+        ERR("Cannot generate mipmap with level={}", levels);
+        exit(1);
+    }
 }
 
 Program::Program(vector<GLuint> ids, vector<GLuint> types) {
