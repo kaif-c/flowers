@@ -435,7 +435,7 @@ void ParticleSystem::PrintParticles() {
 
     Particle *const particles = MapSSBO<Particle>(SSBO_PARTICLE);
     for (GLuint i = 0; i < 100; ++i) {
-        println("[{}]:pos=({},{},{}), vel=({},{},{}), mass={}, life={}",
+        println("[{}]:pos=({},{},{}), vel=({},{},{}), mass={}, life={}, scale={}",
                 i,
 
                 particles[i].pos.x,
@@ -447,7 +447,8 @@ void ParticleSystem::PrintParticles() {
                 particles[i].vel.z,
 
                 particles[i].mass,
-                particles[i].life
+                particles[i].life,
+                particles[i].scale
             );
     }
     glUnmapBuffer(GL_SHADER_STORAGE_BUFFER);

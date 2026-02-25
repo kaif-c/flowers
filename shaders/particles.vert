@@ -5,6 +5,7 @@ struct Particle {
     vec3  vel;
     float mass;
     float life;
+    float scale;
 };
 
 layout (std430, binding = 0) buffer ParticlesBuf {
@@ -26,6 +27,6 @@ void main() {
         return;
     }
     should_discard = 0;
-    gl_Position = u_proj * ((u_transform * vec4(p.pos, 1)) + vec4(aPos, 0));
+    gl_Position = u_proj * ((u_transform * vec4(p.pos, 1)) + p.scale*vec4(aPos, 0));
     uv = aUV;
 }

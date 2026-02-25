@@ -129,7 +129,7 @@ public:
     vec3 vel;
     float mass;
     float life;
-    float _p2;
+    float scale;
     float _p3;
     float _p4;
 };

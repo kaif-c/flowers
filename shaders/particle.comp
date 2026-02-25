@@ -14,6 +14,7 @@ struct Particle {
     vec3  vel;
     float mass;
     float life;
+    float scale;
 };
 
 struct DrawCmd {
@@ -71,6 +72,7 @@ void init_particle(inout uint id) {
                 random(particles[id].pos.x*particles[id].pos.z)
             ) * SPREAD;
     particles[id].mass = 40;
+    particles[id].scale = (random(particles[id].vel.x*particles[id].vel.y) + .75)*1;
     particles[id].life = particle_life +
         random(particles[id].pos.y*-particles[id].pos.z);
 }
