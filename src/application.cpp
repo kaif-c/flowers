@@ -105,7 +105,7 @@ int CreateWindow() {
     glfwMakeContextCurrent(glfw_wind);
     glfwSetFramebufferSizeCallback(glfw_wind, &on_resize);
 
-    // glfwSwapInterval(1);
+    glfwSwapInterval(0);
 
     const char *glver = (char*)glGetString(GL_VERSION);
     INF("Created GLFW window\nOpenGL: {}", glver);

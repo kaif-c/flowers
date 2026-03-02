@@ -1,4 +1,5 @@
 #include "application.hpp"
+#include "logger.hpp"
 #include "objects.hpp"
 #include "renderer.hpp"
 #include "flower_img.c"
@@ -70,6 +71,7 @@ int main() {
         tex_mesh.Draw();
         DrawSpawners();
         Render();
+        INF("fram rate: {}", 1/dt);
     }
     // Close everything
     CloseWindow();

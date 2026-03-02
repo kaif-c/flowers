@@ -6,7 +6,6 @@
 #include <cstddef>
 #include <cstdio>
 #include <cstdlib>
-#include <fstream>
 #include <memory>
 #include <print>
 #include <vector>
@@ -376,7 +375,8 @@ void ParticleSystem::Update(const float dt, const vec3 *pos,
                             const vec3 *vel,
                             const GLuint spawner_len,
                             const GLuint own_spawner,
-                            const float spawn_time) {
+                            const float spawn_time,
+                            const float particle_life) {
     prog.Use();
 
     for (GLuint i = 0; i < SSBO_NUM; ++i)
@@ -386,7 +386,7 @@ void ParticleSystem::Update(const float dt, const vec3 *pos,
     prog.Uniform("dt", dt);
     prog.Uniform("spawn_time", spawn_time);
     prog.Uniform("own_spawner", own_spawner);
-    prog.Uniform("particle_life", 3.0f);
+    prog.Uniform("particle_life", particle_life);
     prog.Uniform("spawner_mass", mass, spawner_len, 1);
     prog.Uniform("spawner_pos", (const float*)pos, spawner_len, 3);
 

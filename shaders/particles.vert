@@ -27,6 +27,7 @@ void main() {
         return;
     }
     should_discard = 0;
-    gl_Position = u_proj * ((u_transform * vec4(p.pos, 1)) + p.scale*vec4(aPos, 0));
+    gl_Position = u_proj * ((u_transform * vec4(p.pos, 1)) +
+        vec4(aPos*p.scale, 0));
     uv = aUV;
 }

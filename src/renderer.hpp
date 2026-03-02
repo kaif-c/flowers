@@ -108,7 +108,7 @@ public:
     ParticleSystem(unique_ptr<Mesh>, const GLuint);
     ~ParticleSystem();
     void Update(const float, const vec3 *, const float *, const vec3 *,
-                const GLuint, const GLuint, const float);
+                const GLuint, const GLuint, const float, const float);
     void Draw();
     void PrintParticles();
 private:
