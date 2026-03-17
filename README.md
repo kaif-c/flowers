@@ -6,7 +6,7 @@ A simple frame-rate independent [particle system](https://en.wikipedia.org/wiki/
 
 
 
-![](demo.GIF)
+![](demo.gif)
 
 
 
