@@ -2,7 +2,13 @@
 
 ## Summary
 
-A simple [particle system](https://en.wikipedia.org/wiki/Particle_system) demo. Spawning and particle logic is all handled in compute shaders. Simple particle spawner logic is handled in CPU
+A simple frame-rate independent [particle system](https://en.wikipedia.org/wiki/Particle_system) demo. Spawning and particle logic is all handled in compute shaders. Simple particle spawner logic is handled in CPU
+
+
+
+![](demo.GIF)
+
+
 
 ## Dependencies
 

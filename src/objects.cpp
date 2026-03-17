@@ -19,7 +19,7 @@
 #define SPEED 2
 #define SENSITIVITY .7
 #define MAX_DST 100
-#define SPAWNER_NUM 1
+#define SPAWNER_NUM 3
 #define FARTHEST_SPAWNER 5
 #define G 6.67
 #define GRAV 0.5f
@@ -202,7 +202,7 @@ static void UpdateSpawner(const uint i, const float dt) {
     spawners.vel[i].y = 0;
     spawners.particles[i]->Update(dt, spawners.pos, spawners.mass,
                                   spawners.vel,
-                                  SPAWNER_NUM, i, 0.0001, 5);
+                                  SPAWNER_NUM, i, 0.001, 5);
 }
 
 void UpdateSpawners(const float dt) {

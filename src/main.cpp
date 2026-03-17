@@ -71,7 +71,6 @@ int main() {
         tex_mesh.Draw();
         DrawSpawners();
         Render();
-        INF("fram rate: {}", 1/dt);
     }
     // Close everything
     CloseWindow();

@@ -4,8 +4,8 @@
 #define GRAV 667
 #define EPSILON 10
 #define MAX_SPEED 4
-#define SPREAD 5
-#define SPAWNER_NUM 1
+#define SPREAD 10
+#define SPAWNER_NUM 3
 
 layout(local_size_x = 256, local_size_y = 1) in;
 
@@ -57,8 +57,9 @@ float random_range(float seed, float min, float max) {
     return random(seed) * (max-min) + min;
 }
 
-void init_particle(inout uint id) {
-    if (draw_cmd.instanceCount < max_particles)
+void init_particle() {
+    uint id = draw_cmd.instanceCount;
+    if (id < max_particles)
         atomicAdd(draw_cmd.instanceCount, 1);
     else {
         for (int i = 0; i < max_particles; ++i) {
@@ -115,18 +116,18 @@ void clamp_particle_vel(const uint id) {
 
 void main() {
     uint id = gl_GlobalInvocationID.x;
-    if (id > draw_cmd.instanceCount)
+    if (id > draw_cmd.instanceCount && id != 0)
         return;
-    // BUG: id may equal instanceCount multiple times a frame
-    // After inc once this will be true for next invocation
-    if (id == draw_cmd.instanceCount) {
+    if (id == 0) {
         last_spawn_time += dt;
         while (last_spawn_time >= spawn_time) {
             last_spawn_time -= spawn_time;
-            init_particle(id);
+            init_particle();
         }
         return;
     }
+
+    id -= 1;
     if (particles[id].life <= 0) {
         atomicExchange(is_ind_dead[id], 1);
         return;
