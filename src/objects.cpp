@@ -35,6 +35,7 @@ public:
 };
 
 static bool was_space_down = false;
+static bool cursor_locked = false;
 static vec2 last_cursor = vec2(0, 0);
 static vec2 pl_front = vec2(0, 1);
 static vec2 pl_right = vec2(1, 0);
@@ -53,6 +54,8 @@ static void CalDir() {
 }
 
 static void UpdatePlayerRotation() {
+    if (cursor_locked)
+        return;
     vec2 cursor = GetCursorPos() - last_cursor;
     last_cursor = GetCursorPos();
 
@@ -98,6 +101,7 @@ static void UpdateFPSCursor() {
         if (!was_space_down) {
             was_space_down = true;
             ToggleCursor();
+            cursor_locked = !cursor_locked;
         }
     }
     else if (was_space_down)
@@ -202,7 +206,7 @@ static void UpdateSpawner(const uint i, const float dt) {
     spawners.vel[i].y = 0;
     spawners.particles[i]->Update(dt, spawners.pos, spawners.mass,
                                   spawners.vel,
-                                  SPAWNER_NUM, i, 0.001, 5);
+                                  SPAWNER_NUM, i, 0.001, 7);
 }
 
 void UpdateSpawners(const float dt) {
